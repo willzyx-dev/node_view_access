@@ -1,0 +1,7 @@
+type: module
+name: 'Node View Access'
+description: 'Enables permissions "View own content" and "View any content" for each content type.'
+package: 'Access Control'
+core: 8.x
+dependencies:
+  - node

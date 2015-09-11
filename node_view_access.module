@@ -1,0 +1,109 @@
+<?php
+
+/**
+ * @file
+ * Main functions and hook implementations of the node_view_access module.
+ *
+ * Enables permissions "View own content" and "View any content" for each
+ * content type on permissions page.
+ */
+
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\node\NodeInterface;
+use Drupal\node\Entity\NodeType;
+
+/**
+ * Node view access default gid.
+ */
+const NODE_VIEW_ACCESS_GID = 23;
+
+/**
+ * Implements hook_node_access().
+ */
+function node_view_access_node_access(NodeInterface $node, $op, AccountInterface $account, $langcode) {
+  if ($op == 'view') {
+    $type = $node->bundle();
+
+    if (!$node->isPublished()) {
+      return AccessResult::allowedIf($account->hasPermission('view own unpublished content', $account) && ($account->id() == $node->getOwnerId()))->cachePerPermissions()->cachePerUser()->cacheUntilEntityChanges($node);
+    }
+
+    if ($account->hasPermission('view ' . $type . ' content', $account)) {
+      return AccessResult::allowed()->cachePerPermissions();
+    }
+    else {
+      return AccessResult::allowedIf($account->hasPermission('view own ' . $type . ' content', $account) && ($account->id() == $node->getOwnerId()))->cachePerPermissions()->cachePerUser()->cacheUntilEntityChanges($node);
+    }
+  }
+
+  // No opinion.
+  return AccessResult::neutral();
+}
+
+/**
+ * Implements hook_node_grants().
+ */
+function node_view_access_node_grants(AccountInterface $account, $op) {
+  $grants = array();
+
+  if ($op == 'view') {
+
+    if ($account->hasPermission('view own unpublished content')) {
+      $grants['node_view_access_author_unpublished'] = array($account->id());
+    }
+
+    foreach (NodeType::loadMultiple() as $key => $type) {
+      if ($account->hasPermission("view $key content")) {
+        $grants["node_view_access_view_$key"] = array(NODE_VIEW_ACCESS_GID);
+      }
+      if ($account->hasPermission("view own $key content")) {
+        $grants['node_view_access_author'] = array($account->id());
+      }
+    }
+
+  }
+
+  return $grants;
+}
+
+/**
+ * Implements hook_node_access_records().
+ */
+function node_view_access_node_access_records(NodeInterface $node) {
+  $grants = array();
+
+  if ($node->isPublished()) {
+    $type = $node->getType();
+
+    $grants[] = array(
+      'realm' => 'node_view_access_view_' . $type,
+      'gid' => NODE_VIEW_ACCESS_GID,
+      'grant_view' => 1,
+      'grant_update' => 0,
+      'grant_delete' => 0,
+      'priority' => 0,
+    );
+
+    $grants[] = array(
+      'realm' => 'node_view_access_author',
+      'gid' => $node->getOwnerId(),
+      'grant_view' => 1,
+      'grant_update' => 0,
+      'grant_delete' => 0,
+      'priority' => 0,
+    );
+  }
+  else {
+    $grants[] = array(
+      'realm' => 'node_view_access_author_unpublished',
+      'gid' => $node->getOwnerId(),
+      'grant_view' => 1,
+      'grant_update' => 0,
+      'grant_delete' => 0,
+      'priority' => 0,
+    );
+  }
+
+  return $grants;
+}
