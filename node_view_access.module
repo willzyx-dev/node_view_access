@@ -21,7 +21,7 @@ const NODE_VIEW_ACCESS_GID = 23;
 /**
  * Implements hook_node_access().
  */
-function node_view_access_node_access(NodeInterface $node, $op, AccountInterface $account, $langcode) {
+function node_view_access_node_access(NodeInterface $node, $op, AccountInterface $account) {
   if ($op == 'view') {
     $type = $node->bundle();
 
