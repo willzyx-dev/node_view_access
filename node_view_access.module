@@ -23,17 +23,25 @@ const NODE_VIEW_ACCESS_GID = 23;
  */
 function node_view_access_node_access(NodeInterface $node, $op, AccountInterface $account) {
   if ($op == 'view') {
-    $type = $node->bundle();
+    $is_owner = $account->id() === $node->getOwnerId();
 
     if (!$node->isPublished()) {
-      return AccessResult::allowedIf($account->hasPermission('view own unpublished content', $account) && ($account->id() == $node->getOwnerId()))->cachePerPermissions()->cachePerUser()->cacheUntilEntityChanges($node);
+      return AccessResult::allowedIf($account->hasPermission('view own unpublished content') && $account->isAuthenticated() && $is_owner)
+        ->cachePerPermissions()
+        ->cachePerUser()
+        ->addCacheableDependency($node);
     }
 
-    if ($account->hasPermission('view ' . $type . ' content', $account)) {
+    $type = $node->bundle();
+
+    if ($account->hasPermission('view ' . $type . ' content')) {
       return AccessResult::allowed()->cachePerPermissions();
     }
     else {
-      return AccessResult::allowedIf($account->hasPermission('view own ' . $type . ' content', $account) && ($account->id() == $node->getOwnerId()))->cachePerPermissions()->cachePerUser()->cacheUntilEntityChanges($node);
+      return AccessResult::allowedIf($account->hasPermission('view own ' . $type . ' content') && $is_owner)
+        ->cachePerPermissions()
+        ->cachePerUser()
+        ->addCacheableDependency($node);
     }
   }
 
